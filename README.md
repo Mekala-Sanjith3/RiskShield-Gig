@@ -11,7 +11,7 @@ Guidewire DEVTrails 2026 | Team: Prime AutoBots
 
 ## 📌 The Problem
 
-India has over 12 million gig delivery workers. Most of them earn between ₹10,000 and ₹15,000 a month — roughly ₹600 to ₹800 a day - working for platforms like Swiggy and Zomato. When a heavy rainstorm hits, when a city-wide curfew is announced, or when flooding shuts down entire zones, these workers simply stop earning. There is no compensation. No claim to file. No safety net.
+India has over 12 million gig delivery workers. Most of them earn between ₹10,000 and ₹15,000 a month - roughly ₹600 to ₹800 a day - working for platforms like Swiggy and Zomato. When a heavy rainstorm hits, when a city-wide curfew is announced, or when flooding shuts down entire zones, these workers simply stop earning. There is no compensation. No claim to file. No safety net.
 
 A worker in Hyderabad during the 2024 monsoon season could lose 8 to 10 working days. That is anywhere between ₹4,800 and ₹8,000 gone - with no recourse. Traditional insurance products do not address this. They are too expensive, too complex, and built for a workforce that earns a salary, not a daily wage.
 
@@ -187,7 +187,7 @@ In a high-stakes parametric system, **GPS Spoofing** is the primary threat. Risk
 | Frontend | React (Progressive Web App) |
 | Backend | Node.js with Express / Spring Boot |
 | Database | PostgreSQL / MySQL |
-| AI / ML | Python — Scikit-learn (Isolation Forest, Random Forest) |
+| AI / ML | Python - Scikit-learn (Isolation Forest, Random Forest) |
 | Integrations | OpenWeatherMap, OpenAQ, Mapbox |
 | Payments | Razorpay test mode / UPI simulator |
 
