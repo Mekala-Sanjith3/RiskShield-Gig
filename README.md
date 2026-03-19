@@ -11,9 +11,9 @@ Guidewire DEVTrails 2026 | Team: Prime AutoBots
 
 ## 📌 The Problem
 
-India has over 12 million gig delivery workers. Most of them earn between ₹10,000 and ₹15,000 a month — roughly ₹600 to ₹800 a day — working for platforms like Swiggy and Zomato. When a heavy rainstorm hits, when a city-wide curfew is announced, or when flooding shuts down entire zones, these workers simply stop earning. There is no compensation. No claim to file. No safety net.
+India has over 12 million gig delivery workers. Most of them earn between ₹10,000 and ₹15,000 a month - roughly ₹600 to ₹800 a day - working for platforms like Swiggy and Zomato. When a heavy rainstorm hits, when a city-wide curfew is announced, or when flooding shuts down entire zones, these workers simply stop earning. There is no compensation. No claim to file. No safety net.
 
-A worker in Hyderabad during the 2024 monsoon season could lose 8 to 10 working days. That is anywhere between ₹4,800 and ₹8,000 gone — with no recourse. Traditional insurance products do not address this. They are too expensive, too complex, and built for a workforce that earns a salary, not a daily wage.
+A worker in Hyderabad during the 2024 monsoon season could lose 8 to 10 working days. That is anywhere between ₹4,800 and ₹8,000 gone - with no recourse. Traditional insurance products do not address this. They are too expensive, too complex, and built for a workforce that earns a salary, not a daily wage.
 
 **RiskShield-Gig exists to close that gap.**
 
@@ -21,9 +21,9 @@ A worker in Hyderabad during the 2024 monsoon season could lose 8 to 10 working 
 
 ## 💡 Proposed Solution
 
-RiskShield-Gig is a parametric insurance platform that monitors real-world disruption events — weather, pollution, curfews — and automatically pays out to affected workers the moment a verified trigger is hit. No forms. No manual claims. No waiting.
+RiskShield-Gig is a parametric insurance platform that monitors real-world disruption events - weather, pollution, curfews - and automatically pays out to affected workers the moment a verified trigger is hit. No forms. No manual claims. No waiting.
 
-The worker pays a small weekly premium. When a covered disruption occurs in their active zone, the system detects it, validates it, and transfers money to their UPI account — often within minutes.
+The worker pays a small weekly premium. When a covered disruption occurs in their active zone, the system detects it, validates it, and transfers money to their UPI account - often within minutes.
 
 > [!IMPORTANT]
 > This system strictly focuses on **income loss protection only**, excluding health, life, or vehicle-related coverage, as per hackathon constraints.
@@ -38,7 +38,7 @@ The worker pays a small weekly premium. When a covered disruption occurs in thei
 **Device access:** Android smartphone, UPI-enabled bank account
 
 **A day in Raju's life:**
-Raju is a Swiggy delivery partner based in Kondapur, Hyderabad. He logs in at 10 AM and typically completes 12 to 15 deliveries by 9 PM. On a good week he takes home around ₹4,500. During monsoon season, there are weeks where he cannot step out at all. Last July, he lost four straight days to flooding. ₹2,800 gone. His rent does not pause for the rain. RiskShield-Gig would have detected the flood alert, verified Raju's active zone, and paid him automatically — before he even knew a claim had been processed.
+Raju is a Swiggy delivery partner based in Kondapur, Hyderabad. He logs in at 10 AM and typically completes 12 to 15 deliveries by 9 PM. On a good week he takes home around ₹4,500. During monsoon season, there are weeks where he cannot step out at all. Last July, he lost four straight days to flooding. ₹2,800 gone. His rent does not pause for the rain. RiskShield-Gig would have detected the flood alert, verified Raju's active zone, and paid him automatically - before he even knew a claim had been processed.
 
 ---
 
@@ -47,7 +47,7 @@ Raju is a Swiggy delivery partner based in Kondapur, Hyderabad. He logs in at 10
 ![Workflow Diagram](docs/workflow.png)
 
 ### 🧾 Onboarding
-A new worker signs up using their phone number and completes a lightweight KYC — just their Aadhaar number, delivery platform ID, and UPI handle. The AI engine pulls their zone data and delivery history to build an initial risk profile.
+A new worker signs up using their phone number and completes a lightweight KYC - just their Aadhaar number, delivery platform ID, and UPI handle. The AI engine pulls their zone data and delivery history to build an initial risk profile.
 
 ### 💼 Weekly Premium Subscription
 Once onboarded, the worker is shown their weekly premium based on their zone risk level. Premiums are deducted automatically each Monday.
@@ -197,7 +197,7 @@ In a high-stakes parametric system, **GPS Spoofing** is the primary threat. Risk
 | Frontend | React (Progressive Web App) |
 | Backend | Node.js with Express / Spring Boot |
 | Database | PostgreSQL / MySQL |
-| AI / ML | Python — Scikit-learn (Isolation Forest, Random Forest) |
+| AI / ML | Python - Scikit-learn (Isolation Forest, Random Forest) |
 | Integrations | OpenWeatherMap, OpenAQ, Mapbox |
 | Payments | Razorpay test mode / UPI simulator |
 
