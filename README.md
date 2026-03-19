@@ -44,6 +44,8 @@ Raju is a Swiggy delivery partner based in Kondapur, Hyderabad. He logs in at 10
 
 ## 🔄 How the Platform Works
 
+![Workflow Diagram](docs/workflow.png)
+
 ### 🧾 Onboarding
 A new worker signs up using their phone number and completes a lightweight KYC — just their Aadhaar number, delivery platform ID, and UPI handle. The AI engine pulls their zone data and delivery history to build an initial risk profile.
 
@@ -128,6 +130,8 @@ The scoring model is built on **Isolation Forest** for anomaly detection, combin
 
 ## 🛡️ Adversarial Defense and Anti-Spoofing Strategy
 
+![Fraud Detection Diagram](docs/fraud-detection.png)
+
 In a high-stakes parametric system, **GPS Spoofing** is the primary threat. RiskShield-Gig uses a layered verification architecture where GPS is just one of many inputs.
 
 ### How We Tell Real from Fake
@@ -157,6 +161,12 @@ In a high-stakes parametric system, **GPS Spoofing** is the primary threat. Risk
 
 ## ⚙️ System Architecture
 
+![System Architecture](docs/architecture.png)
+
+### 🔗 API Flow
+
+![API Flow Diagram](docs/api-flow.png)
+
 ```text
 +----------------+       +-------------------+       +-----------------------+
 |  Worker App    | ----> |  Backend API      | <---> |  AI Risk & Pricing    |
@@ -165,7 +175,7 @@ In a high-stakes parametric system, **GPS Spoofing** is the primary threat. Risk
         |                          |                             |
         |       +------------------+------------------+          |
         |       |                  |                  |          |
-        v       v                  v                  v          v
+        |       v                  v                  v          v
 +---------------+       +-------------------+       +-----------------------+
 | Verification  |       | External APIs     |       | MySQL Database        |
 | (Anti-Spoof)  |       | (Weather, AQI)    |       | (Users, Policies)     |
