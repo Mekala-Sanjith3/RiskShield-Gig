@@ -1,4 +1,4 @@
-# RiskShield-Gig 🛡️
+# RiskShield-Gig
 ### AI-Powered Parametric Insurance for Gig Delivery Workers
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
