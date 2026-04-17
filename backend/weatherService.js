@@ -1,9 +1,10 @@
 /**
- * weatherService.js — OpenWeatherMap Real-Time Integration
- * RiskShield-Gig
+ * weatherService.js — OpenWeatherMap Real-Time + Historical Validation
+ * RiskShield-Gig v3.0
  *
  * Uses the free OpenWeatherMap API to fetch live weather conditions.
  * Falls back to simulated data if API is unavailable.
+ * Also provides weather claim validation via ML service (Open-Meteo).
  */
 
 const axios = require("axios");
@@ -11,6 +12,7 @@ const axios = require("axios");
 // ── API Configuration ──────────────────────────────────────────────────────
 const API_KEY = process.env.OPENWEATHER_API_KEY || "demo";
 const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+const ML_SERVICE = process.env.ML_SERVICE_URL || "http://localhost:5001";
 
 /**
  * Fetches real-time weather data for a given city.
@@ -91,4 +93,37 @@ function simulateWeather(city) {
   };
 }
 
-module.exports = { getWeather };
+/**
+ * Validates a weather claim against historical Open-Meteo data.
+ * Proxies to the ML Flask service which handles the Open-Meteo API call.
+ *
+ * @param {string} city - City name (e.g. "Bengaluru")
+ * @param {number} rainClaimed - Rain amount claimed in mm
+ * @param {string} timestamp - ISO timestamp of the event
+ * @returns {Promise<Object>} - Validation result with flag if discrepancy > 30%
+ */
+async function validateWeatherClaim(city, rainClaimed, timestamp) {
+  try {
+    const response = await axios.post(`${ML_SERVICE}/validate-weather-claim`, {
+      city: city,
+      rain_claimed: rainClaimed,
+      timestamp: timestamp,
+    }, { timeout: 10000 });
+
+    return response.data;
+  } catch (err) {
+    console.warn("[WeatherService] Weather validation failed:", err.message);
+    // If validation service is down, allow claim by default
+    return {
+      valid: true,
+      flag: null,
+      error: "Weather validation service unavailable. Claim allowed by default.",
+      claimed_rain_mm: rainClaimed,
+      actual_rain_mm: null,
+      discrepancy_pct: null,
+      source: "ml-service-unavailable",
+    };
+  }
+}
+
+module.exports = { getWeather, validateWeatherClaim };
