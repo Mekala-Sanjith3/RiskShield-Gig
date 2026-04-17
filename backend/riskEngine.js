@@ -1,6 +1,6 @@
 /**
  * riskEngine.js — Real-Time AI-Powered Parametric Risk Engine
- * RiskShield-Gig v2.0
+ * RiskShield-Gig v3.0
  *
  * Pipeline:
  *   City → OpenWeatherMap API → ML Flask Service → Risk Score → Auto-Claim
@@ -96,7 +96,8 @@ async function evaluateRisk(user) {
     const payout = calculatePayout(user.weeklyIncome);
     const primaryTrigger = triggers[0] || "RAIN";
     const reason = TRIGGER_REASONS[primaryTrigger] || TRIGGER_REASONS.RAIN;
-    claim = createClaim(user.id || "guest", reason, payout, primaryTrigger);
+    // createClaim is now async — runs GPS spoofing + ML fraud checks
+    claim = await createClaim(user.id || "guest", reason, payout, primaryTrigger, weather, city);
   }
 
   return {

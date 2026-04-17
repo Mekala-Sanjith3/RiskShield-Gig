@@ -19,15 +19,49 @@ export interface WorkerProfile {
   platform: string;
 }
 
+export interface FraudAuditTrail {
+  gps_mismatch_km?: number;
+  speed_jump_kmh?: number;
+  accel_flatline_pct?: number;
+  weather_delta_pct?: number;
+  claim_velocity_7d?: number;
+  isolation_score?: number;
+  anomaly_flags?: string[];
+}
+
+export interface PayoutRecord {
+  payout_id: string;
+  claim_id: string;
+  worker_id: string | number;
+  amount: number;
+  currency: string;
+  upi_id: string;
+  transfer_id: string;
+  utr: string;
+  display_ref: string;
+  display_utr: string;
+  status: string;
+  gateway: string;
+  timestamp: string;
+  claim_reason: string;
+}
+
 export interface Claim {
   id: string;
   reason?: string;
   triggerDetails?: string;
   worker_id?: number | string;
   fraudScore?: number;
+  fraudFlags?: string[];
+  fraudAuditTrail?: FraudAuditTrail;
+  verificationTier?: "INSTANT" | "OTP_REQUIRED" | "ADMIN_QUEUE";
   status: ClaimStatus;
   payout: number;
+  currency?: string;
   trigger?: string;
+  payoutRef?: string;
+  payoutUTR?: string;
+  payoutTimestamp?: string;
   createdAt: string;
 }
 
@@ -43,6 +77,12 @@ export interface WeatherData {
   timestamp: string;
 }
 
+export interface RiskDataPoint {
+  time: string;
+  score: number;
+  label: string;
+}
+
 interface RiskShieldState {
   worker: WorkerProfile | null;
   riskScore: number;
@@ -52,8 +92,11 @@ interface RiskShieldState {
   premium: number;
   policyTier: PolicyTier;
   policyActive: boolean;
+  policyStartDate: string | null;
   recentAlert: string | null;
   claims: Claim[];
+  payouts: PayoutRecord[];
+  riskHistory: RiskDataPoint[];
   weather: WeatherData | null;
   simulateLoading: boolean;
   claimJustTriggered: boolean;
@@ -63,12 +106,13 @@ interface RiskShieldState {
   activatePolicy: (tier: PolicyTier, premium: number) => void;
   simulateRainstorm: () => Promise<void>;
   simulateBatchTrigger: () => Promise<void>;
+  simulateFraudClaim: () => Promise<void>;
 }
 
 const RiskShieldContext = createContext<RiskShieldState | undefined>(undefined);
 
 const API_BASE = "http://localhost:5000";
-const POLL_INTERVAL_MS = 30_000; // 30 seconds
+const POLL_INTERVAL_MS = 30_000;
 
 export function RiskShieldProvider({ children }: { children: ReactNode }) {
   const [worker, setWorkerState] = useState<WorkerProfile | null>(null);
@@ -79,19 +123,19 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
   const [premium, setPremium] = useState(12.5);
   const [policyTier, setPolicyTier] = useState<PolicyTier>("NONE");
   const [policyActive, setPolicyActive] = useState(false);
-  const [recentAlert, setRecentAlert] = useState<string | null>(
-    "System stable · Clear skies"
-  );
+  const [policyStartDate, setPolicyStartDate] = useState<string | null>(null);
+  const [recentAlert, setRecentAlert] = useState<string | null>("System stable · Clear skies");
   const [claims, setClaims] = useState<Claim[]>([]);
+  const [payouts, setPayouts] = useState<PayoutRecord[]>([]);
+  const [riskHistory, setRiskHistory] = useState<RiskDataPoint[]>([]);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [simulateLoading, setSimulateLoading] = useState(false);
   const [claimJustTriggered, setClaimJustTriggered] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const [lastChecked, setLastChecked] = useState<string | null>(null);
-  
-  // Local storage Hydration
   const [hydrated, setHydrated] = useState(false);
 
+  // ── LocalStorage hydration ────────────────────────────────────────────────
   useEffect(() => {
     try {
       const saved = localStorage.getItem("riskShieldState");
@@ -103,6 +147,8 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
         if (parsed.policyActive !== undefined) setPolicyActive(parsed.policyActive);
         if (parsed.claims) setClaims(parsed.claims);
         if (parsed.weeklyEarnings) setWeeklyEarnings(parsed.weeklyEarnings);
+        if (parsed.policyStartDate) setPolicyStartDate(parsed.policyStartDate);
+        if (parsed.riskHistory) setRiskHistory(parsed.riskHistory.slice(-20));
       }
     } catch (e) {
       console.error("Failed to load state from localStorage:", e);
@@ -110,24 +156,17 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // Save to local storage on changes
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem(
-        "riskShieldState",
-        JSON.stringify({
-          worker,
-          policyTier,
-          premium,
-          policyActive,
-          claims,
-          weeklyEarnings,
-        })
-      );
+      localStorage.setItem("riskShieldState", JSON.stringify({
+        worker, policyTier, premium, policyActive, claims,
+        weeklyEarnings, policyStartDate,
+        riskHistory: riskHistory.slice(-20),
+      }));
     }
-  }, [worker, policyTier, premium, policyActive, claims, weeklyEarnings, hydrated]);
+  }, [worker, policyTier, premium, policyActive, claims, weeklyEarnings, policyStartDate, riskHistory, hydrated]);
 
-  // Refs for stable polling loop
+  // ── Refs for stable polling loop ──────────────────────────────────────────
   const policyActiveRef = useRef(policyActive);
   const workerRef = useRef(worker);
   const weeklyEarningsRef = useRef(weeklyEarnings);
@@ -138,15 +177,47 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
   useEffect(() => { weeklyEarningsRef.current = weeklyEarnings; }, [weeklyEarnings]);
   useEffect(() => { claimsRef.current = claims; }, [claims]);
 
-  const setWorker = (value: WorkerProfile) => {
-    setWorkerState(value);
-  };
+  const setWorker = (value: WorkerProfile) => setWorkerState(value);
 
   const activatePolicy = (tier: PolicyTier, nextPremium: number) => {
     setPolicyTier(tier);
     setPremium(nextPremium);
     setPolicyActive(true);
+    setPolicyStartDate(new Date().toISOString());
   };
+
+  // ── Push Notification on Claim Trigger ───────────────────────────────────
+  useEffect(() => {
+    if (!claimJustTriggered || !claims[0]) return;
+
+    const fireNotification = async () => {
+      if (!("Notification" in window)) return;
+      if (Notification.permission === "default") {
+        await Notification.requestPermission();
+      }
+      if (Notification.permission === "granted") {
+        new Notification("RiskShield — Claim Triggered", {
+          body: `Heavy rain detected · ₹${claims[0].payout} payout initiated · Ref: ${claims[0].payoutRef || claims[0].id}`,
+          icon: "/favicon.ico",
+          tag: "claim-trigger",
+        });
+      }
+    };
+    fireNotification();
+  }, [claimJustTriggered]);
+
+  // ── Fetch payout history ──────────────────────────────────────────────────
+  const fetchPayouts = useCallback(async () => {
+    const currentWorker = workerRef.current;
+    if (!currentWorker) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/workers/${currentWorker.name}/payouts`);
+      if (res.ok) {
+        const data = await res.json();
+        setPayouts(data.payouts || []);
+      }
+    } catch { /* silent */ }
+  }, []);
 
   // ── Real-time /check-risk poller ──────────────────────────────────────────
   const checkRisk = useCallback(async () => {
@@ -159,7 +230,7 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id:           currentWorker?.name || "guest",
+          id: currentWorker?.name || "guest",
           city,
           policyActive: policyActiveRef.current,
           weeklyIncome: weeklyEarningsRef.current,
@@ -167,65 +238,66 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
       });
 
       const data = await res.json();
-      setLastChecked(new Date().toLocaleTimeString());
+      const now = new Date();
+      setLastChecked(now.toLocaleTimeString());
 
-      // Update risk score from ML engine
       if (data.riskScore !== undefined) {
-        setRiskScore(Math.round(data.riskScore));
+        const score = Math.round(data.riskScore);
+        setRiskScore(score);
         setRiskLevel(data.riskLevel || "STABLE");
+
+        // Accumulate risk history for live chart (keep last 14 points)
+        setRiskHistory((prev) => {
+          const point: RiskDataPoint = {
+            time: now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            score,
+            label: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][now.getDay()] +
+                   " " + now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+          };
+          return [...prev.slice(-13), point];
+        });
       }
 
-      // Update weather display
-      if (data.weather) {
-        setWeather(data.weather);
-      }
+      if (data.weather) setWeather(data.weather);
 
-      // Auto-claim triggered
       if (data.claimTriggered && data.claim) {
         const newClaim: Claim = {
-          id:        data.claim.id,
-          reason:    data.claim.reason,
-          status:    "PAID",
-          payout:    data.claim.payout,
-          trigger:   data.claim.trigger,
-          createdAt: data.claim.createdAt,
+          id:              data.claim.id,
+          reason:          data.claim.reason,
+          status:          "APPROVED",
+          payout:          data.claim.payout,
+          currency:        "INR",
+          trigger:         data.claim.trigger,
+          fraudScore:      data.claim.fraudScore,
+          verificationTier: data.claim.verificationTier,
+          payoutRef:       data.claim.payoutRef,
+          payoutUTR:       data.claim.payoutUTR,
+          createdAt:       data.claim.createdAt,
         };
         setClaims((prev) => [newClaim, ...prev]);
         setClaimJustTriggered(true);
         setWeeklyEarnings((prev) => Math.max(0, prev - data.claim.payout));
         setRecentAlert(
-          `⚠ ${data.weather?.condition || "Weather"} Detected — Claim ${data.claim.id} Auto-Approved · $${data.claim.payout}`
+          `Heavy rain detected — Claim ${data.claim.id} auto-approved · ₹${data.claim.payout} sent via UPI`
         );
-        setTimeout(() => setClaimJustTriggered(false), 5000);
+        setTimeout(() => setClaimJustTriggered(false), 6000);
+        fetchPayouts();
       } else if (data.riskScore !== undefined) {
-        // Update alert based on risk level
-        if (data.riskScore >= 70) {
-          setRecentAlert(
-            `⚠ High Risk — ${data.weather?.description || "Adverse weather"} (${Math.round(data.riskScore)}%) · ML Engine monitoring`
-          );
-        } else {
-          setRecentAlert(
-            `✓ ML Monitor — ${data.weather?.condition || "Clear"} · Risk: ${Math.round(data.riskScore)}% · System stable`
-          );
-        }
+        setRecentAlert(
+          data.riskScore >= 70
+            ? `High Risk — ${data.weather?.description || "Adverse weather"} (${Math.round(data.riskScore)}%) · ML Engine monitoring`
+            : `ML Monitor — ${data.weather?.condition || "Clear"} · Risk: ${Math.round(data.riskScore)}% · System stable`
+        );
       }
-    } catch {
-      // Backend offline — keep current state silently
-    } finally {
+    } catch { /* silent */ } finally {
       setIsPolling(false);
     }
-  }, []); // stable — uses refs
+  }, [fetchPayouts]);
 
-  // ── Start poll on mount ───────────────────────────────────────────────────
   useEffect(() => {
-    // Initial check after 2s
     const initial = setTimeout(checkRisk, 2000);
-    // Then every 30s
     const interval = setInterval(checkRisk, POLL_INTERVAL_MS);
-    return () => {
-      clearTimeout(initial);
-      clearInterval(interval);
-    };
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [checkRisk]);
 
   // ── Manual Rainstorm Simulation ───────────────────────────────────────────
@@ -240,16 +312,15 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id:           currentWorker?.name || "guest",
-          city:         currentWorker?.city || "Bengaluru",
+          id: currentWorker?.name || "guest",
+          city: currentWorker?.city || "Bengaluru",
           policyActive: policyActiveRef.current,
           weeklyIncome: weeklyEarningsRef.current,
-          trigger:      "RAIN",
+          trigger: "RAIN",
         }),
       });
 
       const data = await res.json();
-
       setRiskScore(data.riskScore ?? 85);
       setRiskLevel("HIGH");
       if (data.weather) setWeather(data.weather);
@@ -257,38 +328,38 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
 
       if (data.claimTriggered && data.claim) {
         const newClaim: Claim = {
-          id:        data.claim.id,
-          reason:    data.claim.reason,
-          status:    "PAID",
-          payout:    data.claim.payout,
-          trigger:   data.claim.trigger,
-          createdAt: data.claim.createdAt,
+          id:             data.claim.id,
+          reason:         data.claim.reason,
+          status:         "APPROVED",
+          payout:         data.claim.payout,
+          currency:       "INR",
+          trigger:        data.claim.trigger,
+          fraudScore:     data.claim.fraudScore,
+          verificationTier: data.claim.verificationTier,
+          payoutRef:      data.claim.payoutRef,
+          createdAt:      data.claim.createdAt,
         };
         setClaims((prev) => [newClaim, ...prev]);
         setClaimJustTriggered(true);
-        setRecentAlert(
-          `⚠ Heavy Rain Detected — Claim ${data.claim.id} Auto-Approved via ML Engine · $${data.claim.payout} payout`
-        );
+        setRecentAlert(`Heavy Rain Detected — Claim ${data.claim.id} auto-approved via ML · ₹${data.claim.payout} UPI payout`);
+        fetchPayouts();
       } else {
-        setRecentAlert(
-          "⛈ Heavy Rain Warning · Risk at 85% — Activate policy to auto-trigger claims"
-        );
+        setRecentAlert("Heavy Rain Warning · Risk at 85% — Activate policy to auto-trigger claims");
       }
     } catch {
-      // Backend offline — local fallback
-      const nextRisk = 85;
-      setRiskScore(nextRisk);
+      setRiskScore(85);
       setRiskLevel("HIGH");
       setWeeklyEarnings((prev) => Math.max(0, prev - 45));
-      setRecentAlert("⛈ Heavy Rain Warning · Auto-claim engine armed");
+      setRecentAlert("Heavy Rain Warning · Auto-claim engine armed");
 
       if (policyActiveRef.current) {
         const newClaim: Claim = {
-          id:        `TX-${String(claimsRef.current.length + 1).padStart(4, "0")}`,
-          reason:    "Heavy Rain · Orders stalled > 3h",
-          status:    "PAID",
-          payout:    45,
-          trigger:   "RAIN",
+          id: `TX-${String(claimsRef.current.length + 1).padStart(4, "0")}`,
+          reason: "Heavy Rain · Orders stalled > 3h",
+          status: "APPROVED",
+          payout: 45,
+          currency: "INR",
+          trigger: "RAIN",
           createdAt: new Date().toISOString(),
         };
         setClaims((prev) => [newClaim, ...prev]);
@@ -296,49 +367,63 @@ export function RiskShieldProvider({ children }: { children: ReactNode }) {
       }
     } finally {
       setSimulateLoading(false);
-      setTimeout(() => setClaimJustTriggered(false), 5000);
+      setTimeout(() => setClaimJustTriggered(false), 6000);
     }
-  }, [simulateLoading]);
+  }, [simulateLoading, fetchPayouts]);
 
-  // ── Admin: Simulate Batch Auto-Trigger ────────────────────────────────────
+  // ── Simulate Fraud Claim ──────────────────────────────────────────────────
+  const simulateFraudClaim = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/simulate-fraud-claim`, { method: "POST" });
+      const data = await res.json();
+      if (data.claim) {
+        const fraudClaim: Claim = {
+          id:             data.claim.id,
+          reason:         data.claim.reason || "FRAUD DEMO — GPS Spoofed",
+          status:         data.claim.status,
+          payout:         data.claim.payout,
+          currency:       "INR",
+          trigger:        "RAIN",
+          fraudScore:     data.claim.fraudScore,
+          fraudFlags:     data.claim.fraudFlags,
+          fraudAuditTrail: data.claim.fraudAuditTrail,
+          verificationTier: data.claim.verificationTier,
+          createdAt:      data.claim.createdAt,
+        };
+        setClaims((prev) => [fraudClaim, ...prev]);
+        setRecentAlert(
+          `FRAUD DETECTED — GPS Spoofing flagged · Claim ${data.claim.id} AUTO-REJECTED · Score: ${data.claim.fraudScore}%`
+        );
+      }
+      return data;
+    } catch (e) {
+      console.error("simulateFraudClaim error:", e);
+    }
+  }, []);
+
+  // ── Admin: Batch Trigger ──────────────────────────────────────────────────
   const simulateBatchTrigger = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/simulate-trigger`, { method: "POST" });
       const data = await res.json();
-      
       const claimsRes = await fetch(`${API_BASE}/api/claims/all`);
       const claimsData = await claimsRes.json();
-      
       setClaims(claimsData);
       setRecentAlert(`ADMIN: Batch trigger complete — ${data.claimsGenerated} policies evaluated.`);
     } catch (e) {
       console.error(e);
-      setRecentAlert(`ADMIN ERROR: Ensure backend is running.`);
+      setRecentAlert("ADMIN ERROR: Ensure backend is running.");
     }
   }, []);
 
   return (
     <RiskShieldContext.Provider
       value={{
-        worker,
-        riskScore,
-        riskLevel,
-        weeklyEarnings,
-        weeklyTarget,
-        premium,
-        policyTier,
-        policyActive,
-        recentAlert,
-        claims,
-        weather,
-        simulateLoading,
-        claimJustTriggered,
-        isPolling,
-        lastChecked,
-        setWorker,
-        activatePolicy,
-        simulateRainstorm,
-        simulateBatchTrigger,
+        worker, riskScore, riskLevel, weeklyEarnings, weeklyTarget,
+        premium, policyTier, policyActive, policyStartDate,
+        recentAlert, claims, payouts, riskHistory, weather,
+        simulateLoading, claimJustTriggered, isPolling, lastChecked,
+        setWorker, activatePolicy, simulateRainstorm, simulateBatchTrigger, simulateFraudClaim,
       }}
     >
       {children}

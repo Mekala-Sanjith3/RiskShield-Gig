@@ -1,19 +1,19 @@
-# RiskShield-Gig ML Service 🧠
+# RiskShield-Gig ML Service
 
 This is the AI core of the RiskShield-Gig platform, built using **Python** and **Flask**. The service provides real-time risk assessments, premium calculations, and fraud detection logic.
 
-## 🛠️ Tech Stack
+##  Tech Stack
 - **Language**: Python 3.x
 - **Framework**: Flask (Micro web framework)
 - **Data Logic**: Mock-based risk scoring (Phase 1), upgrading to Scikit-learn (Phase 2).
 - **Security**: Basic validation and anomaly scoring headers.
 
-## 📂 Project Structure
+##  Project Structure
 - `app.py`: Flask entry point with routing for risk and premium assessment.
 - `models/`: (Future) Pickled machine learning models for risk and fraud.
 - `utils/`: Calculation logic and helper functions.
 
-## 🚀 Getting Started
+##  Getting Started
 
 ### Prerequisites
 - Python 3.8+
@@ -45,7 +45,7 @@ The service will start on [http://localhost:5001](http://localhost:5001).
 }
 ```
 
-## 🧠 Risk Calculation Logic (Current)
+##  Risk Calculation Logic (Current)
 Currently, the model uses zone-based risk tiers:
 - **Zone 1 (High Mobility)**: 85/100 risk score, ₹55 premium.
 - **Zone 2 (Residential)**: 25/100 risk score, ₹15 premium.
