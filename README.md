@@ -116,12 +116,17 @@ npm run dev
 5. **Simulate Fraud**: Click the **"Inject Fraud Claim (Demo)"** button to send a spoofed GPS claim and watch the ML engine flag and reject it.
 6. **Admin Panel**: Visit the `Admin Analytics` tab to see the Loss Ratio update, the 7-Day ML forecast, and the Fraud Signal charts.
 
----
+## 📦 Final Submission Package
 
-## Demos
+This repository contains the final artifacts for the Week 6 judging evaluation:
 
-* [Watch our Detailed Project Explanation](https://youtu.be/S_f2gr-ICAk)
-* [Watch our Full High-Fidelity Demo](https://youtu.be/RnA6Skhpx0M)
+1. **5-Minute Demo Video**: 
+   - [Watch the RiskShield-Gig Demo Video](https://youtu.be/0i-tr8ipNJs)
+   - *Visually demonstrates a simulated external disruption (rainstorm) and the automated AI claim approval & instant payout process.*
+
+2. **Final Pitch Deck**:
+   - [`RiskShield-Gig_Pitch_Deck_Team_Prime_AutoBots.pdf`](./RiskShield-Gig_Pitch_Deck_Team_Prime_AutoBots.pdf) (Included in the root of this repository)
+   - *Presentation slides covering our specific delivery persona, the AI & fraud architecture, and the business viability of the weekly pricing model.*
 
 ---
 
